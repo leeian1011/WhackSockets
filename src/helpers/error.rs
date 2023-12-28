@@ -1,15 +1,18 @@
+use std::error::Error;
+
 #[derive(Debug)]
-pub struct WhackError {
-    pub msg: String,
+pub enum WhackError {
+    BadRequest,
+    InvalidPort,
 }
 
 impl std::fmt::Display for WhackError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.msg)
+        write!(f, "{}", self.to_string())
     }
 }
 
-impl std::error::Error for WhackError {
+impl Error for WhackError {
     fn cause(&self) -> Option<&dyn std::error::Error> {
         None
     }
@@ -19,14 +22,9 @@ impl std::error::Error for WhackError {
     }
 
     fn description(&self) -> &str {
-        &self.msg
-    }
-}
-
-impl WhackError {
-    pub fn new(msg: &str) -> Self {
-        Self {
-            msg: msg.to_string(),
+        match self {
+            WhackError::BadRequest => "unparseable http request",
+            WhackError::InvalidPort => "port in use?",
         }
     }
 }
