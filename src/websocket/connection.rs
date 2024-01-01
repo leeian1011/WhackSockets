@@ -9,6 +9,11 @@ const BADREQUEST_RESPONSE: &'static str = "HTTP/1.1 400 Bad Request\r\nContent-T
 
 const HANDSHAKE_RESPONSE: &'static str = "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Accept: ";
 
+pub struct FrameData {
+    content_length: usize,
+    opcode: u8,
+}
+
 pub struct WebSocketConnection {
     stream: TcpStream,
 }
@@ -37,18 +42,32 @@ impl WebSocketConnection {
     }
 
     pub fn recv(&mut self, buffer: &mut [u8]) -> Result<(), Box<dyn std::error::Error>> {
-        let a: u8 = 0b11001001;
-        let b: u8 = 0b11001001;
-        let c: u8 = 0b10010010;
-        let x = a.count_zeros() + a.count_ones();
-        println!("test: {}", a & 1);
-
-        println!("what shows here {}, prev: {}, sameas: {}", a << 1, b, c);
-
-        println!("{x}");
-
         _ = self.stream.read(buffer)?;
-        println!("{}", buffer[2].count_ones() + buffer[2].count_zeros());
+        WebSocketConnection::decode_frame(buffer);
+
         Ok(())
+    }
+
+    fn decode_frame(frame: &mut [u8]) -> FrameData {
+        let second_byte = frame[1];
+        let coded_length = second_byte & 0b111_1111;
+
+        let content_length: usize = if coded_length <= 125 {
+            coded_length as usize
+        } else if coded_length == 126 {
+            let third_byte = frame[3];
+            let fourth_byte = frame[4];
+            (third_byte as u16 + fourth_byte as u16) as usize
+        } else {
+            let third_byte = frame[3];
+            let fourth_byte = frame[4];
+            (third_byte as u64 + fourth_byte as u64) as usize
+        };
+
+        println!("content_length: {}", content_length);
+        FrameData {
+            content_length: 0,
+            opcode: 0,
+        }
     }
 }
